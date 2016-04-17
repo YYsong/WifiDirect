@@ -24,12 +24,17 @@
             android:id="@+id/btn_create_group"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Create Group"/>
+            android:text="CreateG"/>
         <Button
             android:id="@+id/btn_senddata"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Send Data"/>
+            android:text="SendD"/>
+        <Button
+            android:id="@+id/btn_gps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="GPS"/>
     </LinearLayout>
     <View
         android:layout_width="fill_parent"

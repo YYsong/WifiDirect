@@ -81,7 +81,7 @@ public class FileTransferService extends IntentService {
 
 			try {
 				Log.d(WiFiDirectActivity.TAG, "Opening client socket - ");
-				socket.bind(null);
+//				socket.bind(null);
 				socket.connect((new InetSocketAddress(host, port)), SOCKET_TIMEOUT);
 
 				Log.d(WiFiDirectActivity.TAG, "Client socket - " + socket.isConnected());

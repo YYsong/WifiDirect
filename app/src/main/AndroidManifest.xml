@@ -13,13 +13,15 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
+    <!-- GPS定位权限 -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Google Play filtering -->
     <uses-feature
         android:name="android.hardware.wifi.direct"
         android:required="true" />
 
-    <android:uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:icon="@drawable/ic_launcher"
@@ -43,7 +45,10 @@
 
         <activity
             android:name=".SendData"
-            android:label="@string/title_activity_send_data"></activity>
+            android:label="@string/title_activity_send_data" />
+        <activity
+            android:name=".GPSActivity"
+            android:label="@string/title_activity_gps"></activity>
     </application>
 
 </manifest>

@@ -118,6 +118,14 @@ public class WiFiDirectActivity extends Activity implements ChannelListener, Dev
 
             }
         });
+        this.findViewById(R.id.btn_gps).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent=new Intent(WiFiDirectActivity.this,GPSActivity.class);
+                startActivity(intent);
+
+            }
+        });
 
     }
 

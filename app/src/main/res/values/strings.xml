@@ -18,4 +18,5 @@
     <string name="Netowrk">P2p Network Info</string>
     <string name="GetInfo">GetInfo</string>
     <string name="title_activity_send_data">SendData</string>
+    <string name="title_activity_gps">GPSActivity</string>
 </resources>

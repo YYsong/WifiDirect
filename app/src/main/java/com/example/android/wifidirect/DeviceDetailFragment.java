@@ -64,6 +64,8 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	public static final String IP_SERVER = "192.168.49.1";
 	public static int PORT = 8988;
 	private static boolean server_running = false;
+	private static boolean wifip2p_server_running = false;
+
 	protected static final int CHOOSE_FILE_RESULT_CODE = 20;
 	protected static final int SENDDATA_OK = 21;
 	private View mContentView = null;
@@ -179,7 +181,6 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			}
 		});
 
-
 		return mContentView;
 	}
 
@@ -239,12 +240,22 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		view = (TextView) mContentView.findViewById(R.id.device_info);
 		view.setText("Group Owner IP - " + info.groupOwnerAddress.getHostAddress());
 
+
+		view = (TextView) mContentView.findViewById(R.id.server_status);
 		mContentView.findViewById(R.id.btn_start_client).setVisibility(View.VISIBLE);
 
 		if (!server_running){
 			new ServerAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text)).execute();
 			server_running = true;
 		}
+		if (!wifip2p_server_running){
+//			new WifiServerAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text)).execute();
+			new Thread(new ServerThread(5555)).start();
+			wifip2p_server_running = true;
+			view.setText("server is runnint? " +wifip2p_server_running );
+		}
+
+
 
 		// hide the connect button
 		mContentView.findViewById(R.id.btn_connect).setVisibility(View.GONE);
@@ -451,7 +462,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 				PrintWriter out=new PrintWriter(new BufferedWriter(new OutputStreamWriter(client.getOutputStream())), true);
 
 				input=in.readLine();
-				Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message "+input);
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message " + input);
 				out.println(FileTransferService.END);
 				out.flush();
 				serverSocket.close();
@@ -482,6 +493,31 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 	}
 
+	class ServerThread implements Runnable{
+		int port;
+		public ServerThread(int port){
+			this.port=port;
+		}
+		public void run(){
+			try {
+				ServerSocket serverSocket = new ServerSocket(port);
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: Socket opened");
+				Socket client = serverSocket.accept();
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: connection done");
 
+
+				BufferedReader in=new BufferedReader(new InputStreamReader(client.getInputStream()));
+				PrintWriter out=new PrintWriter(new BufferedWriter(new OutputStreamWriter(client.getOutputStream())), true);
+
+				String input=in.readLine();
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message "+input);
+				out.println(FileTransferService.END);
+				out.flush();
+				serverSocket.close();
+			} catch (IOException e) {
+				Log.e(WiFiDirectActivity.TAG, e.getMessage());
+			}
+		}
+	}
 
 }
