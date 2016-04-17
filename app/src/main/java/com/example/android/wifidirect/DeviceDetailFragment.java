@@ -16,11 +16,16 @@
 
 package com.example.android.wifidirect;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.Executors;
@@ -59,6 +64,8 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	public static final String IP_SERVER = "192.168.49.1";
 	public static int PORT = 8988;
 	private static boolean server_running = false;
+	private static boolean wifip2p_server_running = false;
+
 	protected static final int CHOOSE_FILE_RESULT_CODE = 20;
 	protected static final int SENDDATA_OK = 21;
 	private View mContentView = null;
@@ -67,6 +74,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	ProgressDialog progressDialog = null;
 
 //	private DeviceDetailFragment fragment=null;
+
 
 	private TextView NetworkNameView ;
 	private TextView NetworkPasswdView ;
@@ -130,6 +138,8 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 					}
 				});
 
+
+		//点击发送数据按钮，打开一个intent，先把
 //		mContentView.findViewById(R.id.btn_send_data).setOnClickListener(
 //				new View.OnClickListener() {
 //
@@ -157,20 +167,19 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		mContentView.findViewById(R.id.btn_intent).setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				String intentString=((EditText)mContentView.findViewById(R.id.Group_intent)).getText().toString();
-				int intentNum=-1;
-				try{
-					intentNum=Integer.parseInt(intentString);
-				}catch (Exception e){
+				String intentString = ((EditText) mContentView.findViewById(R.id.Group_intent)).getText().toString();
+				int intentNum = -1;
+				try {
+					intentNum = Integer.parseInt(intentString);
+				} catch (Exception e) {
 					e.printStackTrace();
 				}
-				if(intentNum>=0&&intentNum<=14){
-					intent=intentNum;
-					((TextView)mContentView.findViewById(R.id.intent_value)).setText(""+intent);
+				if (intentNum >= 0 && intentNum <= 14) {
+					intent = intentNum;
+					((TextView) mContentView.findViewById(R.id.intent_value)).setText("" + intent);
 				}
 			}
 		});
-
 
 		return mContentView;
 	}
@@ -178,42 +187,40 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 
-//		String localIP = Utils.getLocalIPAddress();
-//		// Trick to find the ip in the file /proc/net/arp
-//		String client_mac_fixed = new String(device.deviceAddress).replace("99", "19");
-//		String clientIP = Utils.getIPFromMac(client_mac_fixed);
-//
-//		// User has picked an image. Transfer it to group owner i.e peer using
-//		// FileTransferService.
-//		Uri uri = data.getData();
-//		TextView statusText = (TextView) mContentView.findViewById(R.id.status_text);
-//		statusText.setText("Sending: " + uri);
-//		Log.d(WiFiDirectActivity.TAG, "Intent----------- " + uri);
-//		Intent serviceIntent = new Intent(getActivity(), FileTransferService.class);
-//		serviceIntent.setAction(FileTransferService.ACTION_SEND_FILE);
-//		serviceIntent.putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString());
-//
-//		if(localIP.equals(IP_SERVER)){
-//			serviceIntent.putExtra(FileTransferService.EXTRAS_ADDRESS, clientIP);
-//		}else{
-//			serviceIntent.putExtra(FileTransferService.EXTRAS_ADDRESS, IP_SERVER);
-//		}
-//
-//		serviceIntent.putExtra(FileTransferService.EXTRAS_PORT, PORT);
-//		getActivity().startService(serviceIntent);
-		switch (resultCode) { //resultCode为回传的标记，我在B中回传的是RESULT_OK
-			case SENDDATA_OK:
-				Bundle b=data.getExtras(); //data为B中回传的Intent
-				String str=b.getString("resullt");//str即为回传的值
-				//告知用户
-				Toast.makeText(getActivity(), "Send data result:"+str,
-						Toast.LENGTH_SHORT).show();
-				break;
-			default:
-				break;
+		String localIP = Utils.getLocalIPAddress();
+		// Trick to find the ip in the file /proc/net/arp
+		String client_mac_fixed = new String(device.deviceAddress).replace("99", "19");
+		String clientIP = Utils.getIPFromMac(client_mac_fixed);
+
+		// User has picked an image. Transfer it to group owner i.e peer using
+		// FileTransferService.
+		Uri uri = data.getData();
+		TextView statusText = (TextView) mContentView.findViewById(R.id.status_text);
+		statusText.setText("Sending: " + uri);
+		Log.d(WiFiDirectActivity.TAG, "Intent----------- " + uri);
+		Intent serviceIntent = new Intent(getActivity(), FileTransferService.class);
+		serviceIntent.setAction(FileTransferService.ACTION_SEND_FILE);
+		serviceIntent.putExtra(FileTransferService.EXTRAS_FILE_PATH, uri.toString());
+
+		if(localIP.equals(IP_SERVER)){
+			serviceIntent.putExtra(FileTransferService.EXTRAS_ADDRESS, clientIP);
+		}else{
+			serviceIntent.putExtra(FileTransferService.EXTRAS_ADDRESS, IP_SERVER);
 		}
 
-
+		serviceIntent.putExtra(FileTransferService.EXTRAS_PORT, PORT);
+		getActivity().startService(serviceIntent);
+//		switch (resultCode) { //resultCode为回传的标记，我在B中回传的是RESULT_OK
+//			case SENDDATA_OK:
+//				Bundle b=data.getExtras(); //data为B中回传的Intent
+//				String str=b.getString("resullt");//str即为回传的值
+//				//告知用户
+//				Toast.makeText(getActivity(), "Send data result:"+str,
+//						Toast.LENGTH_SHORT).show();
+//				break;
+//			default:
+//				break;
+//		}
 	}
 
 	@Override
@@ -233,12 +240,22 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		view = (TextView) mContentView.findViewById(R.id.device_info);
 		view.setText("Group Owner IP - " + info.groupOwnerAddress.getHostAddress());
 
+
+		view = (TextView) mContentView.findViewById(R.id.server_status);
 		mContentView.findViewById(R.id.btn_start_client).setVisibility(View.VISIBLE);
 
 		if (!server_running){
 			new ServerAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text)).execute();
 			server_running = true;
 		}
+		if (!wifip2p_server_running){
+//			new WifiServerAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text)).execute();
+			new Thread(new ServerThread(5555)).start();
+			wifip2p_server_running = true;
+			view.setText("server is runnint? " +wifip2p_server_running );
+		}
+
+
 
 		// hide the connect button
 		mContentView.findViewById(R.id.btn_connect).setVisibility(View.GONE);
@@ -347,6 +364,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	/**
 	 * A simple server socket that accepts connection and writes some data on
 	 * the stream.
+	 * 当wifi-direct连接成功后（见onConnectionInfoAvailable方法），启动这个异步线程，开启server socket，接收传送过来的图片，结束
 	 */
 	public static class ServerAsyncTask extends AsyncTask<Void, Void, String> {
 
@@ -380,7 +398,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 				Log.d(WiFiDirectActivity.TAG, "server: copying files " + f.toString());
 				InputStream inputstream = client.getInputStream();
-				copyFile(inputstream, new FileOutputStream(f));
+				FileTransferService.copyFile(inputstream, new FileOutputStream(f));
 				serverSocket.close();
 				server_running = false;
 				return f.getAbsolutePath();
@@ -417,21 +435,89 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 	}
 
-	public static boolean copyFile(InputStream inputStream, OutputStream out) {
-		byte buf[] = new byte[1024];
-		int len;
-		try {
-			while ((len = inputStream.read(buf)) != -1) {
-				out.write(buf, 0, len);
+	public static class WifiServerAsyncTask extends AsyncTask<Void, Void, String> {
 
-			}
-			out.close();
-			inputStream.close();
-		} catch (IOException e) {
-			Log.d(WiFiDirectActivity.TAG, e.toString());
-			return false;
+		private final Context context;
+		private final TextView statusText;
+		private String input;
+		/**
+		 * @param context
+		 * @param statusText
+		 */
+		public WifiServerAsyncTask(Context context, View statusText) {
+			this.context = context;
+			this.statusText = (TextView) statusText;
 		}
-		return true;
+
+		@Override
+		protected String doInBackground(Void... params) {
+			try {
+				ServerSocket serverSocket = new ServerSocket(SendData.PORT);
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: Socket opened");
+				Socket client = serverSocket.accept();
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: connection done");
+
+
+				BufferedReader in=new BufferedReader(new InputStreamReader(client.getInputStream()));
+				PrintWriter out=new PrintWriter(new BufferedWriter(new OutputStreamWriter(client.getOutputStream())), true);
+
+				input=in.readLine();
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message " + input);
+				out.println(FileTransferService.END);
+				out.flush();
+				serverSocket.close();
+				server_running = false;
+			} catch (IOException e) {
+				Log.e(WiFiDirectActivity.TAG, e.getMessage());
+			}
+			return input;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see android.os.AsyncTask#onPostExecute(java.lang.Object)
+		 */
+		@Override
+		protected void onPostExecute(String result) {
+			statusText.setText("SendDataServer: get a message "+input);
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see android.os.AsyncTask#onPreExecute()
+		 */
+		@Override
+		protected void onPreExecute() {
+			statusText.setText("Opening a server socket");
+		}
+
+	}
+
+	class ServerThread implements Runnable{
+		int port;
+		public ServerThread(int port){
+			this.port=port;
+		}
+		public void run(){
+			try {
+				ServerSocket serverSocket = new ServerSocket(port);
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: Socket opened");
+				Socket client = serverSocket.accept();
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: connection done");
+
+
+				BufferedReader in=new BufferedReader(new InputStreamReader(client.getInputStream()));
+				PrintWriter out=new PrintWriter(new BufferedWriter(new OutputStreamWriter(client.getOutputStream())), true);
+
+				String input=in.readLine();
+				Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message "+input);
+				out.println(FileTransferService.END);
+				out.flush();
+				serverSocket.close();
+			} catch (IOException e) {
+				Log.e(WiFiDirectActivity.TAG, e.getMessage());
+			}
+		}
 	}
 
 }

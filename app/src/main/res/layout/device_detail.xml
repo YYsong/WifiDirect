@@ -106,6 +106,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
         <TextView
+            android:id="@+id/server_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+        <TextView
             android:id="@+id/wifi_serverIP"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />

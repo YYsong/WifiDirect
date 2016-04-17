@@ -48,7 +48,7 @@ import com.example.android.wifidirect.DeviceListFragment.DeviceActionListener;
  */
 public class WiFiDirectActivity extends Activity implements ChannelListener, DeviceActionListener {
 
-    public static final String TAG = "wifidirectdemo";
+    public static final String TAG = "Wifidirect-Activity";
     private WifiP2pManager manager;
     private boolean isWifiP2pEnabled = false;
     private boolean retryChannel = false;
@@ -107,6 +107,23 @@ public class WiFiDirectActivity extends Activity implements ChannelListener, Dev
                                 Toast.LENGTH_SHORT).show();
                     }
                 });
+            }
+        });
+
+        this.findViewById(R.id.btn_senddata).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent=new Intent(WiFiDirectActivity.this,SendData.class);
+                startActivity(intent);
+
+            }
+        });
+        this.findViewById(R.id.btn_gps).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent=new Intent(WiFiDirectActivity.this,GPSActivity.class);
+                startActivity(intent);
+
             }
         });
 
