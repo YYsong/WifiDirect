@@ -64,8 +64,10 @@ public class GPSActivity extends Activity {
     private void getLocation() {
         Location location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         if (location != null) {
+            Log.d(TAG,location.getSpeed()+" "+location.getAccuracy()+" "+location.getTime()+" ");
             latitude = location.getLatitude();
             longitude = location.getLongitude();
+
         } else {
 
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, locationListener);

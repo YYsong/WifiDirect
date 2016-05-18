@@ -35,9 +35,14 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.android.wifidirect.DeviceListFragment.DeviceActionListener;
+
+import Tools.Experiment;
+import Tools.WriteFile;
 
 /**
  * An activity that uses WiFi Direct APIs to discover and connect with available
@@ -56,6 +61,7 @@ public class WiFiDirectActivity extends Activity implements ChannelListener, Dev
     private final IntentFilter intentFilter = new IntentFilter();
     private Channel channel;
     private BroadcastReceiver receiver = null;
+//    public int distance_setting = 0;
 
     /**
      * @param isWifiP2pEnabled the isWifiP2pEnabled to set
@@ -118,12 +124,37 @@ public class WiFiDirectActivity extends Activity implements ChannelListener, Dev
 
             }
         });
-        this.findViewById(R.id.btn_gps).setOnClickListener(new View.OnClickListener() {
+//        this.findViewById(R.id.btn_gps).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Intent intent=new Intent(WiFiDirectActivity.this,GPSActivity.class);
+//                startActivity(intent);
+//
+//            }
+//        });
+        this.findViewById(R.id.btn_write).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent=new Intent(WiFiDirectActivity.this,GPSActivity.class);
-                startActivity(intent);
+                Tools.WriteFile wf = new Tools.WriteFile(WiFiDirectActivity.this);
+                wf.write("first input :" + System.currentTimeMillis() + " " + Experiment.SENDDADA, WriteFile.filePath, WriteFile.fileName);
+            }
+        });
+        this.findViewById(R.id.btn_distance).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
 
+                String distance_value = ((EditText)WiFiDirectActivity.this.findViewById(R.id.distance_value)).getText().toString();
+
+                int distance = -1;
+                try {
+                    distance = Integer.parseInt(distance_value);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if (distance >= 0) {
+                    Experiment.instance.distance = distance;
+                    ((TextView) WiFiDirectActivity.this.findViewById(R.id.btn_distance)).setText("" + distance);
+                }
             }
         });
 
@@ -196,10 +227,17 @@ public class WiFiDirectActivity extends Activity implements ChannelListener, Dev
                 final DeviceListFragment fragment = (DeviceListFragment) getFragmentManager()
                         .findFragmentById(R.id.frag_list);
                 fragment.onInitiateDiscovery();
+                Utils.discoverytime=System.currentTimeMillis();
                 manager.discoverPeers(channel, new WifiP2pManager.ActionListener() {
 
                     @Override
                     public void onSuccess() {
+                        long discoverytime = System.currentTimeMillis() - Utils.discoverytime;
+                        Utils.discoverytime = 0;
+                        Tools.WriteFile wf = new Tools.WriteFile(WiFiDirectActivity.this);
+                        String record = Experiment.getRecord(Experiment.DISCOVERY,Experiment.instance.distance,discoverytime);
+                        wf.write(record, WriteFile.filePath, WriteFile.fileName);
+                        Log.d("discoverytime :", "" + record);
                         Toast.makeText(WiFiDirectActivity.this, "Discovery Initiated",
                                 Toast.LENGTH_SHORT).show();
                     }

@@ -21,6 +21,9 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
+import Tools.Experiment;
+import Tools.WriteFile;
+
 public class SendData extends Activity {
     private String TAG = "===Client===";
     private String TAG1 = "===Send===";
@@ -31,6 +34,7 @@ public class SendData extends Activity {
     private Context ctx=null;
     private TextView senddatacontent = null;
     private Button btnsend=null;
+    private Button btnexp=null;
     private EditText serverIP=null;
     private EditText edtsendms=null;
 
@@ -43,6 +47,7 @@ public class SendData extends Activity {
         btnsend = (Button) findViewById(R.id.send_data_send);
         serverIP= (EditText) findViewById(R.id.send_data_ip);
         edtsendms = (EditText) findViewById(R.id.send_data_content);
+        btnexp = (Button) findViewById(R.id.send_data_exp);
 
         ctx=SendData.this;
 //        String localIP = Utils.getLocalIPAddress();
@@ -64,6 +69,14 @@ public class SendData extends Activity {
 //                serviceIntent.putExtra(FileTransferService.EXTRAS_DATA, edtsendms.getText().toString());
 //                ctx.startService(serviceIntent);
                 new Thread(new ClientThread(serverIP.getText().toString(),5555,edtsendms.getText().toString())).start();
+            }
+        });
+
+        btnexp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(WiFiDirectActivity.TAG, "Sending----------- " + edtsendms.getText().toString());
+                new Thread(new ClientThread(serverIP.getText().toString(),5555,Experiment.SENDDADA)).start();
             }
         });
 
@@ -130,12 +143,21 @@ public class SendData extends Activity {
                 in=new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out=new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
                 out.println(data);
+                long starttime= System.currentTimeMillis();
                 out.flush();
                 String line;
                 while(!(line=in.readLine()).equals(FileTransferService.END)){
                     Log.d(WiFiDirectActivity.TAG, "Client: Send Data Again");
                     out.println(data);
                 }
+                long endtime= System.currentTimeMillis();
+                long relaytime = endtime- starttime;
+
+                Tools.WriteFile wf = new Tools.WriteFile(SendData.this);
+                String record = Experiment.getRecord(Experiment.FORMATION, Experiment.instance.distance, relaytime);
+                wf.write(record, WriteFile.filePath, WriteFile.fileName);
+
+                Log.d(WiFiDirectActivity.TAG,"relaytime is "+relaytime);
                 Log.d(WiFiDirectActivity.TAG, "Client: Data written");
             } catch (IOException e) {
                 Log.e(WiFiDirectActivity.TAG, e.getMessage());

@@ -1,18 +1,25 @@
 package com.example.android.wifidirect;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Enumeration;
 
+import android.app.Activity;
+import android.content.Context;
 import android.util.Log;
 
 public class Utils {
 
+	public static long setuptimep = 0;
+	public static long discoverytime = 0;
 //	private final static String p2p = "p2p-p2p0";
 	private final static String p2p = "p2p";
 
@@ -134,5 +141,4 @@ public class Utils {
 			Log.e("NetworkAddressFactory", "getLocalIPAddress()", ex);
 		}
 	}
-
 }

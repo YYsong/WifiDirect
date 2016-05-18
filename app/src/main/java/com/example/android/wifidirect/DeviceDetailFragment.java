@@ -55,6 +55,9 @@ import android.widget.Toast;
 
 import com.example.android.wifidirect.DeviceListFragment.DeviceActionListener;
 
+import Tools.Experiment;
+import Tools.WriteFile;
+
 /**
  * A fragment that manages a particular peer and allows interaction with device
  * i.e. setting up network connection and transferring data.
@@ -82,6 +85,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 	private Boolean getP2pNetworkInfo=false;
 	private WifiP2pGroup wifiP2PGroup=null;
+	public long timestamp=0;
 //	private String p2pGroupNetworkName=null;
 //	private String p2pGroupNetworkPasswd=null;
 
@@ -124,6 +128,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 						//                            }
 						//                        }
 				);
+				Utils.setuptimep=System.currentTimeMillis();
 				((DeviceActionListener) getActivity()).connect(config);
 
 			}
@@ -167,7 +172,9 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		mContentView.findViewById(R.id.btn_intent).setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
+
 				String intentString = ((EditText) mContentView.findViewById(R.id.Group_intent)).getText().toString();
+
 				int intentNum = -1;
 				try {
 					intentNum = Integer.parseInt(intentString);
@@ -225,6 +232,14 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 	@Override
 	public void onConnectionInfoAvailable(final WifiP2pInfo info) {
+
+		long setuptime = System.currentTimeMillis()-Utils.setuptimep;
+		Utils.setuptimep=0;
+		Tools.WriteFile wf = new Tools.WriteFile(getActivity());
+		String record = Experiment.getRecord(Experiment.FORMATION, Experiment.instance.distance, setuptime);
+		wf.write(record, WriteFile.filePath, WriteFile.fileName);
+		Log.d(Experiment.FORMATION,""+setuptime);
+
 		if (progressDialog != null && progressDialog.isShowing()) {
 			progressDialog.dismiss();
 		}
@@ -499,21 +514,24 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			this.port=port;
 		}
 		public void run(){
+			ServerSocket serverSocket=null;
 			try {
-				ServerSocket serverSocket = new ServerSocket(port);
-				Log.d(WiFiDirectActivity.TAG, "SendDataServer: Socket opened");
-				Socket client = serverSocket.accept();
-				Log.d(WiFiDirectActivity.TAG, "SendDataServer: connection done");
+				serverSocket = new ServerSocket(port);
+				while(true) {
+					Log.d(WiFiDirectActivity.TAG, "SendDataServer: Socket opened");
+					Socket client = serverSocket.accept();
+					Log.d(WiFiDirectActivity.TAG, "SendDataServer: connection done");
 
 
-				BufferedReader in=new BufferedReader(new InputStreamReader(client.getInputStream()));
-				PrintWriter out=new PrintWriter(new BufferedWriter(new OutputStreamWriter(client.getOutputStream())), true);
+					BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+					PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(client.getOutputStream())), true);
 
-				String input=in.readLine();
-				Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message "+input);
-				out.println(FileTransferService.END);
-				out.flush();
-				serverSocket.close();
+					String input = in.readLine();
+					Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message " + input);
+					out.println(FileTransferService.END);
+					out.flush();
+					client.close();
+				}
 			} catch (IOException e) {
 				Log.e(WiFiDirectActivity.TAG, e.getMessage());
 			}

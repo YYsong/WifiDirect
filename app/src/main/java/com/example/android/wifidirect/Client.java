@@ -20,7 +20,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedList;
 
-import Utils.write;
+import Tools.write;
 
 public class Client extends Activity {
     private boolean isserver=false;
