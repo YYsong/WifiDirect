@@ -26,6 +26,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.Executors;
@@ -66,6 +68,8 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 	public static final String IP_SERVER = "192.168.49.1";
 	public static int PORT = 8988;
+	public static Boolean SendEnd = false;
+
 	private static boolean server_running = false;
 	private static boolean wifip2p_server_running = false;
 
@@ -265,9 +269,10 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		}
 		if (!wifip2p_server_running){
 //			new WifiServerAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text)).execute();
-			new Thread(new ServerThread(5555)).start();
+			new Thread(new ServerThread(SendData.TCPPORT)).start();
+			new Thread(new DatagramServerThread(SendData.UPDPORT)).start();
 			wifip2p_server_running = true;
-			view.setText("server is runnint? " +wifip2p_server_running );
+			view.setText("TCP and UDP server is runnint? " +wifip2p_server_running );
 		}
 
 
@@ -467,7 +472,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		@Override
 		protected String doInBackground(Void... params) {
 			try {
-				ServerSocket serverSocket = new ServerSocket(SendData.PORT);
+				ServerSocket serverSocket = new ServerSocket(8888);
 				Log.d(WiFiDirectActivity.TAG, "SendDataServer: Socket opened");
 				Socket client = serverSocket.accept();
 				Log.d(WiFiDirectActivity.TAG, "SendDataServer: connection done");
@@ -508,16 +513,18 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 	}
 
-	class ServerThread implements Runnable{
+	class ServerThread implements Runnable {
 		int port;
-		public ServerThread(int port){
-			this.port=port;
+
+		public ServerThread(int port) {
+			this.port = port;
 		}
-		public void run(){
-			ServerSocket serverSocket=null;
+
+		public void run() {
+			ServerSocket serverSocket = null;
 			try {
 				serverSocket = new ServerSocket(port);
-				while(true) {
+				while (true) {
 					Log.d(WiFiDirectActivity.TAG, "SendDataServer: Socket opened");
 					Socket client = serverSocket.accept();
 					Log.d(WiFiDirectActivity.TAG, "SendDataServer: connection done");
@@ -528,14 +535,56 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 					String input = in.readLine();
 					Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message " + input);
+					if(input.equals(SendData.UDPEND)){
+						DeviceDetailFragment.SendEnd = true;
+					}
 					out.println(FileTransferService.END);
 					out.flush();
 					client.close();
 				}
 			} catch (IOException e) {
-				Log.e(WiFiDirectActivity.TAG, e.getMessage());
+				Log.e(WiFiDirectActivity.TAG, "TMD" + e.getMessage());
 			}
 		}
 	}
 
+	class DatagramServerThread implements Runnable{
+		int port;
+		double recNum = 0.0;
+		public DatagramServerThread(int port){
+			this.port=port;
+		}
+		public void run(){
+			DatagramSocket serverSocket=null;
+			while(true){
+				try {
+					serverSocket = new DatagramSocket(port);
+					Log.d(WiFiDirectActivity.TAG, "DatagramPacket: Socket opened");
+					byte[] recvBuf = new byte[100];
+					DatagramPacket recvPacket = new DatagramPacket(recvBuf,recvBuf.length);
+					Log.d(WiFiDirectActivity.TAG, "DatagramPacket: connection done");
+					int i=0;
+					while(i==0){
+						serverSocket.receive(recvPacket);
+						i = recvPacket.getLength();
+						if(i>0){
+							String receiveStr = new String(recvBuf,0,recvPacket.getLength());
+							Log.d(WiFiDirectActivity.TAG, "get udp package: "+receiveStr);
+							recNum++;
+							i=0;
+						}
+						if(DeviceDetailFragment.SendEnd){
+							Tools.WriteFile wf = new Tools.WriteFile(getActivity());
+							String record = Experiment.getRecord(Experiment.LOSS_RATE, Experiment.instance.distance,recNum/SendData.SENDTIME);
+							wf.write(record, WriteFile.filePath, WriteFile.fileName);
+							recNum=0.0;
+							DeviceDetailFragment.SendEnd = false;
+						}
+					}
+				} catch (IOException e) {
+					Log.e(WiFiDirectActivity.TAG, "TMD"+e.getMessage());
+				}
+			}
+		}
+	}
 }

@@ -18,8 +18,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 
 import Tools.Experiment;
 import Tools.WriteFile;
@@ -28,15 +32,19 @@ public class SendData extends Activity {
     private String TAG = "===Client===";
     private String TAG1 = "===Send===";
 
-    public static int PORT=8888;
-
+    public static int TCPPORT=8888;
+    public static int UPDPORT=6666;
+    public static double SENDTIME=100.00;
+    public static String UDPEND="UDPEND";
     //UI
     private Context ctx=null;
     private TextView senddatacontent = null;
     private Button btnsend=null;
-    private Button btnexp=null;
+    private Button btntcp=null;
+    private Button btnudp=null;
     private EditText serverIP=null;
     private EditText edtsendms=null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,7 +55,8 @@ public class SendData extends Activity {
         btnsend = (Button) findViewById(R.id.send_data_send);
         serverIP= (EditText) findViewById(R.id.send_data_ip);
         edtsendms = (EditText) findViewById(R.id.send_data_content);
-        btnexp = (Button) findViewById(R.id.send_data_exp);
+        btntcp = (Button) findViewById(R.id.send_data_exp);
+        btnudp = (Button) findViewById(R.id.send_udp_exp);
 
         ctx=SendData.this;
 //        String localIP = Utils.getLocalIPAddress();
@@ -68,15 +77,22 @@ public class SendData extends Activity {
 //                serviceIntent.putExtra(FileTransferService.EXTRAS_PORT, PORT);
 //                serviceIntent.putExtra(FileTransferService.EXTRAS_DATA, edtsendms.getText().toString());
 //                ctx.startService(serviceIntent);
-                new Thread(new ClientThread(serverIP.getText().toString(),5555,edtsendms.getText().toString())).start();
+                new Thread(new ClientThread(serverIP.getText().toString(),SendData.TCPPORT,edtsendms.getText().toString())).start();
             }
         });
 
-        btnexp.setOnClickListener(new View.OnClickListener() {
+        btntcp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(WiFiDirectActivity.TAG, "Sending----------- " + edtsendms.getText().toString());
-                new Thread(new ClientThread(serverIP.getText().toString(),5555,Experiment.SENDDADA)).start();
+                Log.d(WiFiDirectActivity.TAG, "Sending---TCP-------- " + edtsendms.getText().toString());
+                new Thread(new ClientThread(serverIP.getText().toString(),SendData.TCPPORT,Experiment.SENDDADA)).start();
+            }
+        });
+        btnudp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(WiFiDirectActivity.TAG, "Sending--UDP--------- " + edtsendms.getText().toString());
+                new Thread(new ClientThread(serverIP.getText().toString(),SendData.TCPPORT,Experiment.SENDDADA)).start();
             }
         });
 
@@ -137,8 +153,11 @@ public class SendData extends Activity {
                 Log.d(WiFiDirectActivity.TAG, "Opening Inner client socket - ");
 //				socket.bind(null);
 //                socket.connect((new InetSocketAddress(ipaddress, port)), SOCKET_TIMEOUT);
-                socket.connect((new InetSocketAddress(ipaddress, port)));
-
+                try {
+                    socket.connect((new InetSocketAddress(ipaddress, port)));
+                }catch (Exception e){
+                    Log.d(WiFiDirectActivity.TAG, "tmd"+e.getMessage());
+                }
                 Log.d(WiFiDirectActivity.TAG, "Client socket - " + socket.isConnected());
                 in=new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out=new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
@@ -154,7 +173,7 @@ public class SendData extends Activity {
                 long relaytime = endtime- starttime;
 
                 Tools.WriteFile wf = new Tools.WriteFile(SendData.this);
-                String record = Experiment.getRecord(Experiment.FORMATION, Experiment.instance.distance, relaytime);
+                String record = Experiment.getRecord(Experiment.DELAY_TCP, Experiment.instance.distance, relaytime);
                 wf.write(record, WriteFile.filePath, WriteFile.fileName);
 
                 Log.d(WiFiDirectActivity.TAG,"relaytime is "+relaytime);
@@ -176,4 +195,71 @@ public class SendData extends Activity {
         }
     }
 
+    class UdpClientThread implements Runnable  {
+        private static final int SOCKET_TIMEOUT = 5000;
+        String ipaddress;
+        int port;
+        String data;
+        private DatagramSocket dataSocket;
+        private DatagramPacket dataPacket;
+        private byte sendDataByte[];
+        private String sendStr;
+
+        public UdpClientThread(String ipaddress, int port, String data){
+            this.ipaddress=ipaddress;
+            this.port=port;
+            this.data=data;
+        }
+        public void run(){
+            int i=0;
+            while(i<100){
+                try {
+                    dataSocket = new DatagramSocket(port);
+                    sendDataByte = new byte[100];
+                    sendStr= data;
+                    sendDataByte = sendStr.getBytes();
+                    dataPacket = new DatagramPacket(sendDataByte,sendDataByte.length,InetAddress.getByName(ipaddress),port);
+                    dataSocket.send(dataPacket);
+                    i++;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            Socket socket=new Socket();
+            PrintWriter out;
+            BufferedReader in;
+            try {
+
+                try {
+                    socket.connect((new InetSocketAddress(ipaddress, port)));
+                }catch (Exception e){
+                    Log.d(WiFiDirectActivity.TAG, "tmd"+e.getMessage());
+                }
+                Log.d(WiFiDirectActivity.TAG, "Client socket - " + socket.isConnected());
+                in=new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                out=new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
+                out.println();
+                out.flush();
+                String line;
+                while(!(line=in.readLine()).equals(FileTransferService.END)){
+                    Log.d(WiFiDirectActivity.TAG, "Client: Send Data Again");
+                    out.println(SendData.UDPEND);
+                }
+                Log.d(WiFiDirectActivity.TAG, "Client: Data UDPEND");
+            } catch (IOException e) {
+                Log.e(WiFiDirectActivity.TAG, e.getMessage());
+            } finally {
+                if (socket != null) {
+                    if (socket.isConnected()) {
+                        try {
+                            socket.close();
+                        } catch (IOException e) {
+                            // Give up
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

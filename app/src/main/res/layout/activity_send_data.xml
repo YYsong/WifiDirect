@@ -61,6 +61,11 @@
             android:id="@+id/send_data_exp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="测试" />
+            android:text="tcp测试" />
+        <Button
+            android:id="@+id/send_udp_exp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="udp测试" />
     </LinearLayout>
 </LinearLayout>

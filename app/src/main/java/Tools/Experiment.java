@@ -14,5 +14,11 @@ public class Experiment {
     public static String getRecord(String type,int distance,long value){
         return type+","+distance+","+value+","+System.currentTimeMillis();
     }
+    public static String getRecord(String type,int distance,double value){
+        return type+","+distance+","+value+","+System.currentTimeMillis();
+    }
+    public static String getRecord(String type,int distance,String value){
+        return type+","+distance+","+value+","+System.currentTimeMillis();
+    }
     public static Experiment instance = new Experiment();
 }
