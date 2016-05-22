@@ -71,7 +71,8 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	public static Boolean SendEnd = false;
 
 	private static boolean server_running = false;
-	private static boolean wifip2p_server_running = false;
+	private static boolean wifip2p_tcp_server_running = false;
+	private static boolean wifip2p_udp_server_running = false;
 
 	protected static final int CHOOSE_FILE_RESULT_CODE = 20;
 	protected static final int SENDDATA_OK = 21;
@@ -106,6 +107,10 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		mContentView = inflater.inflate(R.layout.device_detail, null);
 		NetworkNameView=(TextView)mContentView.findViewById(R.id.network_name);
 		NetworkPasswdView=(TextView) mContentView.findViewById(R.id.network_passwd);
+		server_running = false;
+		wifip2p_tcp_server_running = false;
+		wifip2p_udp_server_running = false;
+		Log.d("tcp and udp",wifip2p_tcp_server_running+" "+wifip2p_udp_server_running);
 
 		mContentView.findViewById(R.id.btn_connect).setOnClickListener(new View.OnClickListener() {
 
@@ -237,13 +242,16 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	@Override
 	public void onConnectionInfoAvailable(final WifiP2pInfo info) {
 
-		long setuptime = System.currentTimeMillis()-Utils.setuptimep;
-		Utils.setuptimep=0;
-		Tools.WriteFile wf = new Tools.WriteFile(getActivity());
-		String record = Experiment.getRecord(Experiment.FORMATION, Experiment.instance.distance, setuptime);
-		wf.write(record, WriteFile.filePath, WriteFile.fileName);
-		Log.d(Experiment.FORMATION,""+setuptime);
-
+		if(Utils.setuptimep!=0){
+			long now = System.currentTimeMillis();
+			long FORMATIONTime =now -Utils.setuptimep;
+			Log.d("Experiment.FORMATION","now is "+now+". "+"setup time is "+Utils.setuptimep);
+			Utils.setuptimep=0;
+			Tools.WriteFile wf = new Tools.WriteFile(getActivity());
+			String record = Experiment.getRecord(Experiment.FORMATION, Experiment.instance.distance, FORMATIONTime);
+			wf.write(record, WriteFile.filePath, WriteFile.fileName);
+			Log.d(Experiment.FORMATION,""+FORMATIONTime);
+		}
 		if (progressDialog != null && progressDialog.isShowing()) {
 			progressDialog.dismiss();
 		}
@@ -267,12 +275,15 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			new ServerAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text)).execute();
 			server_running = true;
 		}
-		if (!wifip2p_server_running){
-//			new WifiServerAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text)).execute();
+		if (!wifip2p_tcp_server_running){
 			new Thread(new ServerThread(SendData.TCPPORT)).start();
+			wifip2p_tcp_server_running = true;
+			view.setText("TCP run:? " +wifip2p_tcp_server_running );
+		}
+		if (!wifip2p_udp_server_running){
 			new Thread(new DatagramServerThread(SendData.UPDPORT)).start();
-			wifip2p_server_running = true;
-			view.setText("TCP and UDP server is runnint? " +wifip2p_server_running );
+			wifip2p_udp_server_running = true;
+			view.setText(view.getText()+" and udp run:? " +wifip2p_udp_server_running );
 		}
 
 
@@ -537,6 +548,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 					Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message " + input);
 					if(input.equals(SendData.UDPEND)){
 						DeviceDetailFragment.SendEnd = true;
+						Log.d(WiFiDirectActivity.TAG, "get udf send flag: "+DeviceDetailFragment.SendEnd);
 					}
 					out.println(FileTransferService.END);
 					out.flush();
@@ -556,6 +568,23 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		}
 		public void run(){
 			DatagramSocket serverSocket=null;
+			//一旦发现发现完毕，立即输出结果，启动一个监测线程
+			Thread monitor = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					while(true){
+						if(DeviceDetailFragment.SendEnd){
+							Log.d(WiFiDirectActivity.TAG, "udp sending: "+DeviceDetailFragment.SendEnd);
+							Tools.WriteFile wf = new Tools.WriteFile(getActivity());
+							String record = Experiment.getRecord(Experiment.LOSS_RATE, Experiment.instance.distance,recNum/SendData.SENDTIME);
+							wf.write(record, WriteFile.filePath, WriteFile.fileName);
+							recNum=0.0;
+							DeviceDetailFragment.SendEnd = false;
+						}
+					}
+				}
+			});
+			monitor.start();
 			while(true){
 				try {
 					serverSocket = new DatagramSocket(port);
@@ -565,20 +594,15 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 					Log.d(WiFiDirectActivity.TAG, "DatagramPacket: connection done");
 					int i=0;
 					while(i==0){
+
 						serverSocket.receive(recvPacket);
 						i = recvPacket.getLength();
 						if(i>0){
 							String receiveStr = new String(recvBuf,0,recvPacket.getLength());
-							Log.d(WiFiDirectActivity.TAG, "get udp package: "+receiveStr);
+							Log.d(WiFiDirectActivity.TAG, "get udp package: " + receiveStr);
 							recNum++;
+							Log.d(WiFiDirectActivity.TAG, "has udp package: " + recNum);
 							i=0;
-						}
-						if(DeviceDetailFragment.SendEnd){
-							Tools.WriteFile wf = new Tools.WriteFile(getActivity());
-							String record = Experiment.getRecord(Experiment.LOSS_RATE, Experiment.instance.distance,recNum/SendData.SENDTIME);
-							wf.write(record, WriteFile.filePath, WriteFile.fileName);
-							recNum=0.0;
-							DeviceDetailFragment.SendEnd = false;
 						}
 					}
 				} catch (IOException e) {

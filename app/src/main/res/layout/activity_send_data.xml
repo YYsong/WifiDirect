@@ -31,6 +31,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:inputType="textNoSuggestions"
+        android:text="192.168.49.1"
         android:ems="10" >
     </EditText>
 

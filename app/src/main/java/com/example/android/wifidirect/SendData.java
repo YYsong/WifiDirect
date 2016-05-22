@@ -11,6 +11,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -44,6 +45,7 @@ public class SendData extends Activity {
     private Button btnudp=null;
     private EditText serverIP=null;
     private EditText edtsendms=null;
+    private Context self= null;
 
 
     @Override
@@ -58,6 +60,7 @@ public class SendData extends Activity {
         btntcp = (Button) findViewById(R.id.send_data_exp);
         btnudp = (Button) findViewById(R.id.send_udp_exp);
 
+        this.self=this;
         ctx=SendData.this;
 //        String localIP = Utils.getLocalIPAddress();
         // Trick to find the ip in the file /proc/net/arp
@@ -92,7 +95,7 @@ public class SendData extends Activity {
             @Override
             public void onClick(View v) {
                 Log.d(WiFiDirectActivity.TAG, "Sending--UDP--------- " + edtsendms.getText().toString());
-                new Thread(new ClientThread(serverIP.getText().toString(),SendData.TCPPORT,Experiment.SENDDADA)).start();
+                new Thread(new UdpClientThread(serverIP.getText().toString(),SendData.UPDPORT,Experiment.SENDDADA)).start();
             }
         });
 
@@ -139,10 +142,12 @@ public class SendData extends Activity {
         String ipaddress;
         int port;
         String data;
+        Context activity;
         public ClientThread(String ipaddress, int port, String data){
             this.ipaddress=ipaddress;
             this.port=port;
             this.data=data;
+//            this.activity = activity;
         }
         public void run(){
 
@@ -156,7 +161,7 @@ public class SendData extends Activity {
                 try {
                     socket.connect((new InetSocketAddress(ipaddress, port)));
                 }catch (Exception e){
-                    Log.d(WiFiDirectActivity.TAG, "tmd"+e.getMessage());
+                    Log.d(WiFiDirectActivity.TAG, "tmd "+e.getMessage());
                 }
                 Log.d(WiFiDirectActivity.TAG, "Client socket - " + socket.isConnected());
                 in=new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -176,8 +181,9 @@ public class SendData extends Activity {
                 String record = Experiment.getRecord(Experiment.DELAY_TCP, Experiment.instance.distance, relaytime);
                 wf.write(record, WriteFile.filePath, WriteFile.fileName);
 
-                Log.d(WiFiDirectActivity.TAG,"relaytime is "+relaytime);
+                Log.d(WiFiDirectActivity.TAG, "relaytime is " + relaytime);
                 Log.d(WiFiDirectActivity.TAG, "Client: Data written");
+//                Toast.makeText(activity, "TCP Test Success!",Toast.LENGTH_SHORT).show();
             } catch (IOException e) {
                 Log.e(WiFiDirectActivity.TAG, e.getMessage());
             } finally {
@@ -200,6 +206,7 @@ public class SendData extends Activity {
         String ipaddress;
         int port;
         String data;
+        private Context activity;
         private DatagramSocket dataSocket;
         private DatagramPacket dataPacket;
         private byte sendDataByte[];
@@ -209,18 +216,35 @@ public class SendData extends Activity {
             this.ipaddress=ipaddress;
             this.port=port;
             this.data=data;
+//            this.activity=activity;
         }
         public void run(){
             int i=0;
-            while(i<100){
+            if(dataSocket == null){
+                try{
+                    dataSocket = new DatagramSocket();
+                }catch (Exception e) {
+                    Log.d(WiFiDirectActivity.TAG, "udp client socket start faild! " + e.getMessage());
+                    dataSocket.close();
+                }
+            }else{
+                Log.d(WiFiDirectActivity.TAG, "udp client socket already is! " );
+            }
+
+                sendDataByte = new byte[100];
+                sendStr= data;
+                sendDataByte = sendStr.getBytes();
+            try{
+                dataPacket = new DatagramPacket(sendDataByte,sendDataByte.length,InetAddress.getByName(ipaddress),port);
+            }catch (Exception e) {
+                Log.d(WiFiDirectActivity.TAG, "udp client packet start faild! " + e.getMessage());
+                dataSocket.close();
+            }
+            while(i<SendData.SENDTIME){
                 try {
-                    dataSocket = new DatagramSocket(port);
-                    sendDataByte = new byte[100];
-                    sendStr= data;
-                    sendDataByte = sendStr.getBytes();
-                    dataPacket = new DatagramPacket(sendDataByte,sendDataByte.length,InetAddress.getByName(ipaddress),port);
                     dataSocket.send(dataPacket);
                     i++;
+                    Log.d(WiFiDirectActivity.TAG, "udp send in " + i+" .data is "+dataPacket.getData());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -229,23 +253,23 @@ public class SendData extends Activity {
             PrintWriter out;
             BufferedReader in;
             try {
-
                 try {
-                    socket.connect((new InetSocketAddress(ipaddress, port)));
+                    socket.connect((new InetSocketAddress(ipaddress, SendData.TCPPORT)));
                 }catch (Exception e){
-                    Log.d(WiFiDirectActivity.TAG, "tmd"+e.getMessage());
+                    Log.d(WiFiDirectActivity.TAG, "final tcp in udp test error! "+e.getMessage());
                 }
-                Log.d(WiFiDirectActivity.TAG, "Client socket - " + socket.isConnected());
+                Log.d(WiFiDirectActivity.TAG, "final tcp in udp test Client socket - " + socket.isConnected());
                 in=new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 out=new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
-                out.println();
+                out.println(SendData.UDPEND);
                 out.flush();
                 String line;
                 while(!(line=in.readLine()).equals(FileTransferService.END)){
-                    Log.d(WiFiDirectActivity.TAG, "Client: Send Data Again");
+                    Log.d(WiFiDirectActivity.TAG, "final tcp in udp test Client: Send Data Again");
                     out.println(SendData.UDPEND);
                 }
-                Log.d(WiFiDirectActivity.TAG, "Client: Data UDPEND");
+                Log.d(WiFiDirectActivity.TAG, "final tcp in udp test Client: Data UDPEND");
+//                Toast.makeText(activity, "UDP Test Success!",Toast.LENGTH_SHORT).show();
             } catch (IOException e) {
                 Log.e(WiFiDirectActivity.TAG, e.getMessage());
             } finally {

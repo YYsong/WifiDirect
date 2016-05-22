@@ -15,6 +15,7 @@ import java.util.Enumeration;
 import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
+import android.widget.Toast;
 
 public class Utils {
 
@@ -108,20 +109,6 @@ public class Utils {
 	}
 
 	public static void getAllNetworkInterfaces(){
-//		Enumeration enumeration= null;
-//		try {
-//			enumeration = NetworkInterface.getNetworkInterfaces();
-//		} catch (SocketException e) {
-//			e.printStackTrace();
-//		}
-//		NetworkInterface eth0=null;
-//		while(enumeration.hasMoreElements()){
-//			eth0=(NetworkInterface)enumeration.nextElement();
-//				String info=eth0.getName().toString()+"__"+eth0.getDisplayName().toString()+"__"+eth0.getInetAddresses().toString();
-//				Log.d("IP-song",info);
-//				break;
-//		}
-
 		try {
 			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
 				NetworkInterface intf = en.nextElement();
@@ -130,6 +117,30 @@ public class Utils {
 					if (inetAddress instanceof Inet4Address){ // only IPV4 for now
 						String iface = intf.getName();
 						Log.d("IP-song","netName:"+iface+"  ,  inetAddress:"+inetAddress);
+					}
+
+				}
+			}
+		} catch (SocketException ex) {
+
+			Log.e("NetworkAddressFactory", "getLocalIPAddress()", ex);
+		} catch (NullPointerException ex) {
+			Log.e("NetworkAddressFactory", "getLocalIPAddress()", ex);
+		}
+	}
+	public static void getAllNetworkInterfaces(Activity activity){
+		try {
+			for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
+				NetworkInterface intf = en.nextElement();
+				for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
+					InetAddress inetAddress = enumIpAddr.nextElement();
+					if (inetAddress instanceof Inet4Address){ // only IPV4 for now
+						String iface = intf.getName();
+						Log.d("IP-song","netName:"+iface+"  ,  inetAddress:"+inetAddress);
+						if(intf.getName().equals("p2p0")){
+							Toast.makeText(activity, "p2p IP:"+inetAddress,
+									Toast.LENGTH_SHORT).show();
+						}
 					}
 
 				}

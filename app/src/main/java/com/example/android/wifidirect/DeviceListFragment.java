@@ -62,7 +62,7 @@ public class DeviceListFragment extends ListFragment implements PeerListListener
         mContentView.findViewById(R.id.btn_get_ipinfo).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Utils.getAllNetworkInterfaces();
+                Utils.getAllNetworkInterfaces(getActivity());
 //                Log.d("IP-song", Utils.getLocalIPAddress());
             }
         });
