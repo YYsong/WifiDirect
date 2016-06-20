@@ -68,5 +68,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="udp测试" />
+        <Button
+            android:id="@+id/send_broadcast_exp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="广播测试" />
+
     </LinearLayout>
 </LinearLayout>

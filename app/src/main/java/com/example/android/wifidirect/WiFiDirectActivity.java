@@ -157,6 +157,26 @@ public class WiFiDirectActivity extends Activity implements ChannelListener, Dev
                 }
             }
         });
+        this.findViewById(R.id.btn_divice_num).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                String device_num_value = ((EditText)WiFiDirectActivity.this.findViewById(R.id.device_num_value)).getText().toString();
+
+                int devicd_num = -1;
+                try {
+                    devicd_num = Integer.parseInt(device_num_value);
+                    Log.d(WiFiDirectActivity.TAG,"device num is "+devicd_num);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if (devicd_num >= 0) {
+                    Experiment.instance.devicd_num = devicd_num;
+                    ((TextView) WiFiDirectActivity.this.findViewById(R.id.device_num_value)).setText("" + devicd_num);
+                    Toast.makeText(WiFiDirectActivity.this, "device num is "+Experiment.instance.devicd_num,Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
 
     }
 
@@ -235,7 +255,7 @@ public class WiFiDirectActivity extends Activity implements ChannelListener, Dev
                         long discoverytime = System.currentTimeMillis() - Utils.discoverytime;
                         Utils.discoverytime = 0;
                         Tools.WriteFile wf = new Tools.WriteFile(WiFiDirectActivity.this);
-                        String record = Experiment.getRecord(Experiment.DISCOVERY,Experiment.instance.distance,discoverytime);
+                        String record = Experiment.getRecord(Experiment.DISCOVERY,Experiment.instance.distance,discoverytime,Experiment.instance.isGroupOwner);
                         wf.write(record, WriteFile.filePath, WriteFile.fileName);
                         Log.d("discoverytime :", "" + record);
                         Toast.makeText(WiFiDirectActivity.this, "Discovery Initiated",

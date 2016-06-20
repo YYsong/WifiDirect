@@ -25,11 +25,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="CreG"/>
-        <Button
-            android:id="@+id/btn_senddata"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SendD"/>
         <!--<Button-->
             <!--android:id="@+id/btn_gps"-->
             <!--android:layout_width="wrap_content"-->
@@ -40,11 +35,26 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="WRITE"/>
+
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal">
+        <Button
+            android:id="@+id/btn_senddata"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SendD"/>
         <Button
             android:id="@+id/btn_distance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="DIS"/>
+        <Button
+            android:id="@+id/btn_divice_num"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NUM"/>
     </LinearLayout>
     <View
         android:layout_width="fill_parent"
@@ -102,6 +112,23 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:hint="Type Exp Distance"/>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/device_num_text"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Device num is :"/>
+        <EditText
+            android:id="@+id/device_num_value"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:hint="Device num is"/>
     </LinearLayout>
     <TextView
         android:layout_width="fill_parent"

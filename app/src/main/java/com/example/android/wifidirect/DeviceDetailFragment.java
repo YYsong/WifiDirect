@@ -68,11 +68,13 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 	public static final String IP_SERVER = "192.168.49.1";
 	public static int PORT = 8988;
+	public static Boolean SendStart = false;
 	public static Boolean SendEnd = false;
 
 	private static boolean server_running = false;
 	private static boolean wifip2p_tcp_server_running = false;
 	private static boolean wifip2p_udp_server_running = false;
+	private static boolean wifip2p_broadcast_server_running = false;
 
 	protected static final int CHOOSE_FILE_RESULT_CODE = 20;
 	protected static final int SENDDATA_OK = 21;
@@ -248,7 +250,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			Log.d("Experiment.FORMATION","now is "+now+". "+"setup time is "+Utils.setuptimep);
 			Utils.setuptimep=0;
 			Tools.WriteFile wf = new Tools.WriteFile(getActivity());
-			String record = Experiment.getRecord(Experiment.FORMATION, Experiment.instance.distance, FORMATIONTime);
+			String record = Experiment.getRecord(Experiment.FORMATION, Experiment.instance.distance, FORMATIONTime,Experiment.instance.isGroupOwner);
 			wf.write(record, WriteFile.filePath, WriteFile.fileName);
 			Log.d(Experiment.FORMATION,""+FORMATIONTime);
 		}
@@ -262,6 +264,9 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		// The owner IP is now known.
 		TextView view = (TextView) mContentView.findViewById(R.id.group_owner);
 		view.setText(getResources().getString(R.string.group_owner_text) + ((info.isGroupOwner == true) ? getResources().getString(R.string.yes) : getResources().getString(R.string.no)));
+
+		//set grouprole
+		Experiment.instance.isGroupOwner = info.isGroupOwner;
 
 		// InetAddress from WifiP2pInfo struct.
 		view = (TextView) mContentView.findViewById(R.id.device_info);
@@ -285,9 +290,11 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			wifip2p_udp_server_running = true;
 			view.setText(view.getText()+" and udp run:? " +wifip2p_udp_server_running );
 		}
-
-
-
+		if (!wifip2p_broadcast_server_running){
+			new Thread(new BroadCastServerThread(SendData.BROADCAST_PORT)).start();
+			wifip2p_broadcast_server_running = true;
+			view.setText(view.getText()+" and broadcast udp run:? " +wifip2p_broadcast_server_running );
+		}
 		// hide the connect button
 		mContentView.findViewById(R.id.btn_connect).setVisibility(View.GONE);
 	}
@@ -546,13 +553,18 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 
 					String input = in.readLine();
 					Log.d(WiFiDirectActivity.TAG, "SendDataServer: get a message " + input);
+					out.println(FileTransferService.END);
+					out.flush();
+					client.close();
+					//判断信息是否是UPD的同步字段，是的话就更新相关的标识
 					if(input.equals(SendData.UDPEND)){
 						DeviceDetailFragment.SendEnd = true;
 						Log.d(WiFiDirectActivity.TAG, "get udf send flag: "+DeviceDetailFragment.SendEnd);
 					}
-					out.println(FileTransferService.END);
-					out.flush();
-					client.close();
+					if(input.equals(SendData.UDPSTART)){
+						DeviceDetailFragment.SendStart = true;
+						Log.d(WiFiDirectActivity.TAG, "get udf send flag: "+DeviceDetailFragment.SendEnd);
+					}
 				}
 			} catch (IOException e) {
 				Log.e(WiFiDirectActivity.TAG, "TMD" + e.getMessage());
@@ -560,9 +572,11 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 		}
 	}
 
+	//UDP接收段，通过检查标识字段，得知接收是否开始
 	class DatagramServerThread implements Runnable{
 		int port;
-		double recNum = 0.0;
+		//初始化为0，保证读取的线程最新
+		volatile double recNum = 0.0;
 		public DatagramServerThread(int port){
 			this.port=port;
 		}
@@ -572,14 +586,26 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			Thread monitor = new Thread(new Runnable() {
 				@Override
 				public void run() {
+					double start = 0.0;
+					double end = 0.0;
+					double getNum;
 					while(true){
+						if(DeviceDetailFragment.SendStart){
+							//记下此时的接收数量
+							start=recNum;
+							DeviceDetailFragment.SendStart = false;
+						}
 						if(DeviceDetailFragment.SendEnd){
+							//记下此时的接收数量
+							end=recNum;
+							DeviceDetailFragment.SendEnd = false;
+
 							Log.d(WiFiDirectActivity.TAG, "udp sending: "+DeviceDetailFragment.SendEnd);
 							Tools.WriteFile wf = new Tools.WriteFile(getActivity());
-							String record = Experiment.getRecord(Experiment.LOSS_RATE, Experiment.instance.distance,recNum/SendData.SENDTIME);
+							//在两个标识符接收之间的
+							getNum = end-start;
+							String record = Experiment.getRecord(Experiment.LOSS_RATE, Experiment.instance.distance,getNum/SendData.SENDTIME,Experiment.instance.isGroupOwner);
 							wf.write(record, WriteFile.filePath, WriteFile.fileName);
-							recNum=0.0;
-							DeviceDetailFragment.SendEnd = false;
 						}
 					}
 				}
@@ -588,6 +614,8 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			while(true){
 				try {
 					serverSocket = new DatagramSocket(port);
+					serverSocket.setSendBufferSize(20000);
+					serverSocket.setReceiveBufferSize(20000);
 					Log.d(WiFiDirectActivity.TAG, "DatagramPacket: Socket opened");
 					byte[] recvBuf = new byte[100];
 					DatagramPacket recvPacket = new DatagramPacket(recvBuf,recvBuf.length);
@@ -600,6 +628,7 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 						if(i>0){
 							String receiveStr = new String(recvBuf,0,recvPacket.getLength());
 							Log.d(WiFiDirectActivity.TAG, "get udp package: " + receiveStr);
+							//只有接收线程更新接收为数量
 							recNum++;
 							Log.d(WiFiDirectActivity.TAG, "has udp package: " + recNum);
 							i=0;
@@ -608,6 +637,62 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 				} catch (IOException e) {
 					Log.e(WiFiDirectActivity.TAG, "TMD"+e.getMessage());
 				}
+			}
+		}
+	}
+
+
+	//UDP接收段，通过检查标识字段，得知接收是否开始
+	class BroadCastServerThread implements Runnable{
+		int port;
+		//初始化为0，保证读取的线程最新
+		volatile double recNum = 0.0;
+		public BroadCastServerThread(int port){
+			this.port=port;
+		}
+		public void run(){
+			DatagramSocket serverSocket=null;
+			//一旦发现发现完毕，立即输出结果，启动一个监测线程
+			while(true){
+				try {
+					serverSocket = new DatagramSocket(port);
+					serverSocket.setSendBufferSize(20000);
+					serverSocket.setReceiveBufferSize(20000);
+					Log.d(WiFiDirectActivity.TAG, "BroadCastDatagramPacket: Socket opened");
+					byte[] recvBuf = new byte[100];
+					DatagramPacket recvPacket = new DatagramPacket(recvBuf,recvBuf.length);
+					Log.d(WiFiDirectActivity.TAG, "BroadCastDatagramPacket: connection done");
+					int i=0;
+					boolean start = false;
+					boolean end=false;
+					recNum=0.0;
+					while(i==0&&!end){
+						serverSocket.receive(recvPacket);
+						i = recvPacket.getLength();
+						if(i>0){
+							String receiveStr = new String(recvBuf,0,recvPacket.getLength());
+							if(receiveStr.equals(Experiment.ENDDADA)&&start){
+								end=true;
+								Log.d(WiFiDirectActivity.TAG,"broadcast end!");
+							}
+							//只有接收线程更新接收为数量
+							if(receiveStr.equals(Experiment.SENDDADA)){
+								Log.d(WiFiDirectActivity.TAG, "get broadcast udp package: " + receiveStr);
+								recNum++;
+								start=true;
+								Log.d(WiFiDirectActivity.TAG, "has broadcast udp package: " + recNum);
+							}
+							i=0;
+						}
+					}
+					Tools.WriteFile wf = new Tools.WriteFile(getActivity());
+					String record = Experiment.getRecord(Experiment.BROADCAST, Experiment.instance.devicd_num,recNum/SendData.SENDTIME,Experiment.instance.isGroupOwner);
+					wf.write(record, WriteFile.filePath, WriteFile.fileName);
+				} catch (IOException e) {
+					Log.e(WiFiDirectActivity.TAG+this.getClass().getName().toString(), "TMD "+e.getMessage());
+				}
+				serverSocket.close();
+				serverSocket=null;
 			}
 		}
 	}
