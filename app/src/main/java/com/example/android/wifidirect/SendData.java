@@ -13,6 +13,10 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import net.fec.openrq.ArrayDataEncoder;
+import net.fec.openrq.EncodingPacket;
+import net.fec.openrq.encoder.SourceBlockEncoder;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -36,6 +40,7 @@ public class SendData extends Activity {
     public static int TCPPORT=8888;
     public static int UPDPORT=6666;
     public static int BROADCAST_PORT=5555;
+    public static int FOUNTAIN_PORT=7777;
     public static double SENDTIME=100.00;
     public static volatile String UDPEND="UDPEND";
     public static volatile String UDPSTART="UDPSTART";
@@ -46,6 +51,7 @@ public class SendData extends Activity {
     private Button btntcp=null;
     private Button btnudp=null;
     private Button btnbroadcast=null;
+    private Button btnraptorR=null;
     private Button btremind=null;
     private EditText serverIP=null;
     private EditText edtsendms=null;
@@ -64,6 +70,7 @@ public class SendData extends Activity {
         btntcp = (Button) findViewById(R.id.send_data_exp);
         btnudp = (Button) findViewById(R.id.send_udp_exp);
         btnbroadcast = (Button) findViewById(R.id.send_broadcast_exp);
+        btnraptorR = (Button) findViewById(R.id.send_raptorR_exp);
 //        btremind = (Button) findViewById(R.id.remind);
 
 
@@ -120,6 +127,14 @@ public class SendData extends Activity {
             public void onClick(View v) {
                 Log.d(WiFiDirectActivity.TAG,"Broadcasting");
                 new Thread(new BroadCastClientThread("192.168.49.255",SendData.BROADCAST_PORT,Experiment.SENDDADA)).start();
+                Toast.makeText(SendData.this, "Sending--broadcast-!",Toast.LENGTH_SHORT).show();
+            }
+        });
+        btnraptorR.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(WiFiDirectActivity.TAG,"Broadcasting");
+                new Thread(new RaptorBroadcastClientThread("192.168.49.255",SendData.FOUNTAIN_PORT,FountainCode.input)).start();
                 Toast.makeText(SendData.this, "Sending--broadcast-!",Toast.LENGTH_SHORT).show();
             }
         });
@@ -377,7 +392,70 @@ public class SendData extends Activity {
             boolean result = SendUDP(this.data);
         }
     }
+    class RaptorBroadcastClientThread implements Runnable  {
+        private static final int SOCKET_TIMEOUT = 5000;
+        String ipaddress = "192.168.49.255";
+        int port;
+        String data;
+        private Context activity;
+        private DatagramSocket dataSocket;
+        private DatagramPacket dataPacket;
+        private byte sendDataByte[];
+        private String sendStr;
+        private int sendTimes = 0;
 
+        public RaptorBroadcastClientThread(String ipaddress, int port, String data){
+            this.ipaddress=ipaddress;
+            this.port=port;
+            this.data=data;
+//            this.activity=activity;
+        }
+        public boolean SendUDP(String senddata){
+            int i=0;
+            if(dataSocket == null){
+                try{
+                    dataSocket = new DatagramSocket();
+                    dataSocket.setSendBufferSize(20000);
+                    dataSocket.setReceiveBufferSize(20000);
+                }catch (Exception e) {
+                    Log.d(WiFiDirectActivity.TAG, "udp client socket start faild! " + e.getMessage());
+                    dataSocket.close();
+                    return false;
+                }
+            }else{
+                Log.d(WiFiDirectActivity.TAG, "udp client socket already is! " );
+
+                return false;
+            }
+            try{
+                ArrayDataEncoder arrayDataEncoder = FountainCode.getEncoder(data.getBytes("UTF-8"));
+                if(arrayDataEncoder!=null){
+                    for(SourceBlockEncoder sourceBlockEncoder: arrayDataEncoder.sourceBlockIterable()){
+                        for(EncodingPacket encodingPacket: sourceBlockEncoder.sourcePacketsIterable()){
+                            sendDataByte=encodingPacket.asArray();
+                            dataSocket.send(new DatagramPacket(sendDataByte, sendDataByte.length, InetAddress.getByName(ipaddress), port));
+                            Log.d(WiFiDirectActivity.TAG, "udp send fountain packet .data length is " + sendDataByte.length);
+                        }
+                        for(EncodingPacket encodingPacket: sourceBlockEncoder.repairPacketsIterable(sourceBlockEncoder.numberOfSourceSymbols())){
+                            sendDataByte=encodingPacket.asArray();
+                            dataSocket.send(new DatagramPacket(sendDataByte,sendDataByte.length,InetAddress.getByName(ipaddress),port));
+                            Log.d(WiFiDirectActivity.TAG, "udp send fountain packet  .data length is " + sendDataByte.length);
+                        }
+                    }
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+                Log.d(WiFiDirectActivity.TAG, "udp client packet start faild! " + e.getMessage());
+                dataSocket.close();
+                return false;
+            }
+            dataSocket.close();
+            return true;
+        }
+        public void run(){
+            boolean result = SendUDP(this.data);
+        }
+    }
 
     public static boolean SendMessageByTcp(String ipaddress,String message){
         Socket socket=new Socket();

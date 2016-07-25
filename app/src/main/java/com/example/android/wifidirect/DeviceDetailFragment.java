@@ -57,6 +57,10 @@ import android.widget.Toast;
 
 import com.example.android.wifidirect.DeviceListFragment.DeviceActionListener;
 
+import net.fec.openrq.ArrayDataDecoder;
+import net.fec.openrq.OpenRQ;
+import net.fec.openrq.decoder.SourceBlockDecoder;
+
 import Tools.Experiment;
 import Tools.WriteFile;
 
@@ -75,6 +79,8 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 	private static boolean wifip2p_tcp_server_running = false;
 	private static boolean wifip2p_udp_server_running = false;
 	private static boolean wifip2p_broadcast_server_running = false;
+	private static boolean wifip2p_foutaincode_server_running = false;
+
 
 	protected static final int CHOOSE_FILE_RESULT_CODE = 20;
 	protected static final int SENDDATA_OK = 21;
@@ -294,6 +300,11 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 			new Thread(new BroadCastServerThread(SendData.BROADCAST_PORT)).start();
 			wifip2p_broadcast_server_running = true;
 			view.setText(view.getText()+" and broadcast udp run:? " +wifip2p_broadcast_server_running );
+		}
+		if (!wifip2p_foutaincode_server_running){
+			new Thread(new FoutainCodeServerThread(SendData.FOUNTAIN_PORT)).start();
+			wifip2p_foutaincode_server_running = true;
+			view.setText(view.getText()+" and fountain udp run:? " +wifip2p_foutaincode_server_running );
 		}
 		// hide the connect button
 		mContentView.findViewById(R.id.btn_connect).setVisibility(View.GONE);
@@ -688,6 +699,56 @@ public class DeviceDetailFragment extends Fragment implements ConnectionInfoList
 					Tools.WriteFile wf = new Tools.WriteFile(getActivity());
 					String record = Experiment.getRecord(Experiment.BROADCAST, Experiment.instance.devicd_num,recNum/SendData.SENDTIME,Experiment.instance.isGroupOwner);
 					wf.write(record, WriteFile.filePath, WriteFile.fileName);
+				} catch (IOException e) {
+					Log.e(WiFiDirectActivity.TAG+this.getClass().getName().toString(), "TMD "+e.getMessage());
+				}
+				serverSocket.close();
+				serverSocket=null;
+			}
+		}
+	}
+	//UDP接收段，通过检查标识字段，得知接收是否开始
+	class FoutainCodeServerThread implements Runnable{
+		int port;
+		public FoutainCodeServerThread(int port){
+			this.port=port;
+		}
+		public void run(){
+			DatagramSocket serverSocket=null;
+			//一旦发现发现完毕，立即输出结果，启动一个监测线程
+			while(true){
+				try {
+					serverSocket = new DatagramSocket(port);
+					serverSocket.setSendBufferSize(20000);
+					serverSocket.setReceiveBufferSize(FountainCode.MAX_DEC_MEM);
+					Log.d(WiFiDirectActivity.TAG, "FoutainCodeServerThread: Socket opened");
+
+					ArrayDataDecoder arrayDataDecoder = FountainCode.getDecoder(1);
+					int revSize=arrayDataDecoder.symbolSize()+8;
+					byte[] recvBuf = new byte[revSize];
+					DatagramPacket recvPacket = new DatagramPacket(recvBuf,recvBuf.length);
+					Log.d(WiFiDirectActivity.TAG, "FoutainCodeServerThread: connection done");
+					int i=0;
+					boolean start = false;
+					boolean end=false;
+					for(SourceBlockDecoder sourceBlockDecoder: arrayDataDecoder.sourceBlockIterable()){
+						while(!sourceBlockDecoder.isSourceBlockDecoded()){
+							serverSocket.receive(recvPacket);
+							i = recvPacket.getLength();
+							if(i>0){
+								sourceBlockDecoder.putEncodingPacket(arrayDataDecoder.parsePacket(recvBuf,false).value());
+							}
+						}
+					}
+					if(arrayDataDecoder.isDataDecoded()){
+						String result=new String(arrayDataDecoder.dataArray(),"UTF-8");
+						Log.d(WiFiDirectActivity.TAG,"get foutain code data : length is "+result.getBytes("UTF-8").length);
+						Log.d(WiFiDirectActivity.TAG, "get foutain code data : " + result);
+						Log.d(WiFiDirectActivity.TAG, "Is true? : " + result.equals(FountainCode.input));
+					}
+//					Tools.WriteFile wf = new Tools.WriteFile(getActivity());
+//					String record = Experiment.getRecord(Experiment.BROADCAST, Experiment.instance.devicd_num,recNum/SendData.SENDTIME,Experiment.instance.isGroupOwner);
+//					wf.write(record, WriteFile.filePath, WriteFile.fileName);
 				} catch (IOException e) {
 					Log.e(WiFiDirectActivity.TAG+this.getClass().getName().toString(), "TMD "+e.getMessage());
 				}
