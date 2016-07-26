@@ -46,9 +46,6 @@
         <activity
             android:name=".SendData"
             android:label="@string/title_activity_send_data" />
-        <activity
-            android:name=".GPSActivity"
-            android:label="@string/title_activity_gps"></activity>
     </application>
 
 </manifest>

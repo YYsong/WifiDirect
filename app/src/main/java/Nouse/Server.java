@@ -1,4 +1,4 @@
-package com.example.android.wifidirect;
+package Nouse;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -10,6 +10,8 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import com.example.android.wifidirect.R;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -18,6 +20,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Date;
 
+//暂时没用
 public class Server extends Activity implements SurfaceHolder.Callback{
     private android.hardware.Camera camera;
     private SurfaceView sv;

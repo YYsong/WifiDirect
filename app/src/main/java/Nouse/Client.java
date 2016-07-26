@@ -1,4 +1,4 @@
-package com.example.android.wifidirect;
+package Nouse;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -13,6 +13,8 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.TextView;
 
+import com.example.android.wifidirect.R;
+
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -21,7 +23,7 @@ import java.util.Date;
 import java.util.LinkedList;
 
 import Tools.write;
-
+//暂时没用
 public class Client extends Activity {
     private boolean isserver=false;
     private boolean isconnected=false;
